@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 4. Load (Silver → Golden)
 # MAGIC Cada tabla Golden responde una **pregunta de negocio**:
@@ -121,6 +125,14 @@ segmentacion = (perfil_pedidos
 escribir(segmentacion, "segmentacion_clientes")
 
 display(spark.table(f"{golden}.segmentacion_clientes").groupBy("segmento").count().orderBy("segmento"))
+
+# COMMAND ----------
+
+# Validación de calidad en Golden: ninguna tabla puede quedar vacía
+for tabla in ["kpi_departamentos", "kpi_habitos_compra", "top_productos_recompra", "segmentacion_clientes"]:
+    filas = spark.table(f"{golden}.{tabla}").count()
+    assert filas > 0, f"La tabla {golden}.{tabla} quedó vacía"
+    print(f"OK -> {golden}.{tabla}: {filas:,} filas")
 
 # COMMAND ----------
 
