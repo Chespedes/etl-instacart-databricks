@@ -1,0 +1,515 @@
+{
+  "datasets": [
+    {
+      "name": "c68928fc",
+      "displayName": "kpis_generales",
+      "queryLines": [
+        "SELECT\r\n",
+        "  (SELECT COUNT(*) FROM catalog_prod.golden.segmentacion_clientes) AS clientes,\r\n",
+        "  (SELECT SUM(total_pedidos) FROM catalog_prod.golden.kpi_habitos_compra) AS pedidos,\r\n",
+        "  (SELECT SUM(total_items) FROM catalog_prod.golden.kpi_departamentos) AS productos_vendidos,\r\n",
+        "  (SELECT ROUND(SUM(total_recompras) / SUM(total_items) * 100, 1) FROM catalog_prod.golden.kpi_departamentos) AS tasa_recompra_pct\r\n"
+      ]
+    },
+    {
+      "name": "971ad347",
+      "displayName": "ventas_departamento",
+      "queryLines": [
+        "SELECT department,\r\n",
+        "       SUM(total_items) AS productos_vendidos,\r\n",
+        "       ROUND(SUM(total_recompras) / SUM(total_items) * 100, 1) AS tasa_recompra_pct\r\n",
+        "FROM catalog_prod.golden.kpi_departamentos\r\n",
+        "GROUP BY department\r\n",
+        "ORDER BY productos_vendidos DESC"
+      ]
+    },
+    {
+      "name": "68a5375c",
+      "displayName": "habitos_compra",
+      "queryLines": [
+        "SELECT CONCAT(order_dow, ' - ', dia_semana) AS dia_semana,\r\n",
+        "       order_hour_of_day, franja_horaria, total_pedidos\r\n",
+        "FROM catalog_prod.golden.kpi_habitos_compra"
+      ]
+    },
+    {
+      "name": "c15b968c",
+      "displayName": "top_productos",
+      "queryLines": [
+        "SELECT ranking, product_name, department, veces_recomprado, ROUND(tasa_recompra * 100, 1) AS tasa_recompra_pct\r\n",
+        "FROM catalog_prod.golden.top_productos_recompra\r\n",
+        "WHERE ranking <= 15\r\n",
+        "ORDER BY ranking"
+      ]
+    },
+    {
+      "name": "972be978",
+      "displayName": "segmentos_clientes",
+      "queryLines": [
+        "SELECT segmento,\r\n",
+        "       COUNT(*) AS clientes,\r\n",
+        "       ROUND(AVG(total_pedidos), 1) AS promedio_pedidos,\r\n",
+        "       ROUND(AVG(promedio_dias_entre_pedidos), 1) AS cada_cuantos_dias\r\n",
+        "FROM catalog_prod.golden.segmentacion_clientes\r\n",
+        "GROUP BY segmento"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "3cffa474",
+      "displayName": "Resumen",
+      "layout": [
+        {
+          "widget": {
+            "name": "7380360a",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "971ad347",
+                  "fields": [
+                    {
+                      "name": "sum(productos_vendidos)",
+                      "expression": "SUM(`productos_vendidos`)"
+                    },
+                    {
+                      "name": "department",
+                      "expression": "`department`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Productos vendidos por departamento",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(productos_vendidos)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "department",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_clientes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c68928fc",
+                  "fields": [
+                    {
+                      "name": "sum(clientes)",
+                      "expression": "SUM(`clientes`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Clientes"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(clientes)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_pedidos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c68928fc",
+                  "fields": [
+                    {
+                      "name": "sum(pedidos)",
+                      "expression": "SUM(`pedidos`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(pedidos)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_productos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c68928fc",
+                  "fields": [
+                    {
+                      "name": "sum(productos_vendidos)",
+                      "expression": "SUM(`productos_vendidos`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Productos vendidos"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(productos_vendidos)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_recompra",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c68928fc",
+                  "fields": [
+                    {
+                      "name": "sum(tasa_recompra_pct)",
+                      "expression": "SUM(`tasa_recompra_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Tasa de recompra (%)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(tasa_recompra_pct)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "db96721d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "68a5375c",
+                  "fields": [
+                    {
+                      "name": "sum(total_pedidos)",
+                      "expression": "SUM(`total_pedidos`)"
+                    },
+                    {
+                      "name": "order_hour_of_day",
+                      "expression": "`order_hour_of_day`"
+                    },
+                    {
+                      "name": "dia_semana",
+                      "expression": "`dia_semana`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Pedidos por hora y día de la semana",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "order_hour_of_day",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "dia_semana",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "sum(total_pedidos)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": false
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0bad9a51",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "c15b968c",
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    },
+                    {
+                      "name": "department",
+                      "expression": "`department`"
+                    },
+                    {
+                      "name": "tasa_recompra_pct",
+                      "expression": "`tasa_recompra_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Top productos recomprados",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking"
+                  },
+                  {
+                    "fieldName": "product_name"
+                  },
+                  {
+                    "fieldName": "department"
+                  },
+                  {
+                    "fieldName": "tasa_recompra_pct"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "9cd8b2a8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "972be978",
+                  "fields": [
+                    {
+                      "name": "sum(clientes)",
+                      "expression": "SUM(`clientes`)"
+                    },
+                    {
+                      "name": "segmento",
+                      "expression": "`segmento`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Clientes por segmento",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(clientes)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "segmento",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 10,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "5548b90e",
+      "displayName": "Untitled page",
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
