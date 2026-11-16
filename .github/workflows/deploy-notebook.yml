@@ -1,0 +1,164 @@
+# CI/CD: despliega los notebooks de DESARROLLO a PRODUCCIÓN y ejecuta el workflow WF_INSTACART en prod.
+# Basado en el YML3 del curso, con validaciones adicionales.
+#
+# Secrets requeridos en GitHub (Settings > Secrets and variables > Actions):
+#   DATABRICKS_ORIGIN_HOST   URL del workspace dev   (https://adb-xxxx.azuredatabricks.net)
+#   DATABRICKS_ORIGIN_TOKEN  Token de acceso del workspace dev
+#   DATABRICKS_DEST_HOST     URL del workspace prod
+#   DATABRICKS_DEST_TOKEN    Token de acceso del workspace prod
+
+name: Deploy ETL Instacart (dev -> prod)
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "proceso/**", ".github/workflows/**" ]
+  workflow_dispatch:          # permite ejecutarlo manualmente desde la pestaña Actions
+
+env:
+  # Origen (dev): carpeta del workspace donde viven los notebooks del proceso
+  NOTEBOOK_BASE: "/Workspace/Users/sebascespedesuniv@outlook.com/etl-instacart-databricks/proceso"
+  # Destino (prod)
+  DEST_BASE: "/Shared/etl-instacart/proceso"
+  WORKFLOW_NAME: "WF_INSTACART"
+  CLUSTER_NAME: "cluster-smartdata"
+  # Parámetros del ambiente productivo
+  STORAGE_PROD: "adlssmartdataprod0811"
+  CATALOGO_PROD: "catalog_prod"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Install jq & curl
+      run: sudo apt-get update && sudo apt-get install -y jq curl
+
+    - name: Export notebooks from DEV
+      run: |
+        NOTEBOOKS=("1.Preparacion_Ambiente" "2.Ingest_orders" "2.Ingest_order_products" "2.Ingest_products" "2.Ingest_catalogos" "3.Transform" "4.Load" "5.Grants_Medallion")
+        mkdir -p notebooks_to_deploy
+        for nb in "${NOTEBOOKS[@]}"; do
+          echo "Exportando $nb ..."
+          curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.DATABRICKS_ORIGIN_TOKEN }}" \
+            "${{ secrets.DATABRICKS_ORIGIN_HOST }}/api/2.0/workspace/export?path=$NOTEBOOK_BASE/$nb&format=SOURCE&direct_download=true" \
+            --output "notebooks_to_deploy/$nb.py"
+          # Validación: si la ruta no existe, la API devuelve un JSON de error en vez del notebook
+          if ! grep -q "Databricks notebook source" "notebooks_to_deploy/$nb.py"; then
+            echo "❌ No se pudo exportar $nb:"; cat "notebooks_to_deploy/$nb.py"; exit 1
+          fi
+          echo "✅ $nb exportado"
+        done
+
+    - name: Deploy notebooks to PROD
+      run: |
+        curl -s -X POST \
+          -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"path\":\"$DEST_BASE\"}" \
+          "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.0/workspace/mkdirs"
+        for file in notebooks_to_deploy/*.py; do
+          name=$(basename "$file" .py)
+          echo "Importando $name -> $DEST_BASE/$name"
+          response=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+            -F "path=$DEST_BASE/$name" -F "format=SOURCE" -F "language=PYTHON" -F "overwrite=true" \
+            -F "content=@$file" \
+            "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.0/workspace/import")
+          if echo "$response" | jq -e '.error_code' > /dev/null 2>&1; then
+            echo "❌ Error importando $name: $response"; exit 1
+          fi
+        done
+
+    - name: Delete existing workflow (if any)
+      run: |
+        job_id=$(curl -s -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+          "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.1/jobs/list?name=$WORKFLOW_NAME" | jq -r '.jobs[]?.job_id')
+        for id in $job_id; do
+          echo "Eliminando workflow existente $id"
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+            -H "Content-Type: application/json" -d "{\"job_id\": $id}" \
+            "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.1/jobs/delete"
+        done
+
+    - name: Get PROD cluster ID
+      run: |
+        cluster_id=$(curl -s -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+          "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.0/clusters/list" \
+          | jq -r --arg name "$CLUSTER_NAME" '.clusters[]? | select(.cluster_name == $name) | .cluster_id')
+        if [ -z "$cluster_id" ] || [ "$cluster_id" = "null" ]; then
+          echo "❌ No existe el cluster $CLUSTER_NAME en prod"; exit 1
+        fi
+        echo "✅ Cluster $CLUSTER_NAME: $cluster_id"
+        echo "CLUSTER_ID=$cluster_id" >> $GITHUB_ENV
+
+    - name: Create workflow WF_INSTACART
+      run: |
+        P="$DEST_BASE"
+        C="$CLUSTER_ID"
+        BASE_PARAMS="{\"storageName\": \"$STORAGE_PROD\", \"catalogo\": \"$CATALOGO_PROD\"}"
+        task() {  # task_key notebook depends_on(json) params(json)
+          echo "{\"task_key\":\"$1\",\"notebook_task\":{\"notebook_path\":\"$P/$2\",\"source\":\"WORKSPACE\",\"base_parameters\":$4},\"existing_cluster_id\":\"$C\",\"timeout_seconds\":3600,\"max_retries\":1,\"depends_on\":$3}"
+        }
+        INGESTA='[{"task_key":"Preparacion_Ambiente"}]'
+        TASKS="[
+          $(task Preparacion_Ambiente 1.Preparacion_Ambiente '[]' "{\"storageName\":\"$STORAGE_PROD\",\"catalogo\":\"$CATALOGO_PROD\",\"ambiente\":\"prod\",\"credencial\":\"cred-smartdata\",\"reset\":\"false\"}"),
+          $(task Ingest_orders 2.Ingest_orders "$INGESTA" "$BASE_PARAMS"),
+          $(task Ingest_order_products 2.Ingest_order_products "$INGESTA" "$BASE_PARAMS"),
+          $(task Ingest_products 2.Ingest_products "$INGESTA" "$BASE_PARAMS"),
+          $(task Ingest_catalogos 2.Ingest_catalogos "$INGESTA" "$BASE_PARAMS"),
+          $(task Transform 3.Transform '[{"task_key":"Ingest_orders"},{"task_key":"Ingest_order_products"},{"task_key":"Ingest_products"},{"task_key":"Ingest_catalogos"}]' "{\"catalogo\":\"$CATALOGO_PROD\"}"),
+          $(task Load 4.Load '[{"task_key":"Transform"}]' "{\"catalogo\":\"$CATALOGO_PROD\"}"),
+          $(task Grants 5.Grants_Medallion '[{"task_key":"Load"}]' "{\"catalogo\":\"$CATALOGO_PROD\"}")
+        ]"
+        jq -n --arg name "$WORKFLOW_NAME" --argjson tasks "$TASKS" '{
+          name: $name,
+          tasks: $tasks,
+          max_concurrent_runs: 1,
+          timeout_seconds: 7200,
+          schedule: { quartz_cron_expression: "0 0 6 * * ?", timezone_id: "America/Guatemala", pause_status: "PAUSED" },
+          tags: { environment: "production", project: "etl-instacart", created_by: "github_actions" }
+        }' > workflow_config.json
+        cat workflow_config.json | jq '.tasks[] | {task_key, notebook: .notebook_task.notebook_path, depends_on}'
+        response=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+          -H "Content-Type: application/json" -d @workflow_config.json \
+          "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.1/jobs/create")
+        job_id=$(echo "$response" | jq -r '.job_id')
+        if [ -z "$job_id" ] || [ "$job_id" = "null" ]; then echo "❌ Error creando workflow: $response"; exit 1; fi
+        echo "✅ Workflow creado: $job_id"
+        echo "JOB_ID=$job_id" >> $GITHUB_ENV
+
+    - name: Run workflow
+      run: |
+        run_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+          -H "Content-Type: application/json" -d "{\"job_id\": $JOB_ID}" \
+          "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.1/jobs/run-now" | jq -r '.run_id')
+        if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then echo "❌ No se pudo ejecutar"; exit 1; fi
+        echo "🚀 Run ID: $run_id"
+        echo "RUN_ID=$run_id" >> $GITHUB_ENV
+
+    - name: Monitor workflow
+      run: |
+        max_wait=2400; waited=0; interval=30
+        while [ $waited -lt $max_wait ]; do
+          status=$(curl -s -H "Authorization: Bearer ${{ secrets.DATABRICKS_DEST_TOKEN }}" \
+            "${{ secrets.DATABRICKS_DEST_HOST }}/api/2.1/jobs/runs/get?run_id=$RUN_ID")
+          state=$(echo "$status" | jq -r '.state.life_cycle_state')
+          result=$(echo "$status" | jq -r '.state.result_state // "RUNNING"')
+          echo "⏱️ ${waited}s - $state ($result)"
+          echo "$status" | jq -r '.tasks[]? | "   " + .task_key + ": " + .state.life_cycle_state + " " + (.state.result_state // "")'
+          if [ "$state" = "TERMINATED" ]; then
+            if [ "$result" = "SUCCESS" ]; then echo "🎉 Workflow completado con éxito"; exit 0; fi
+            echo "❌ Workflow terminó con: $result"; exit 1
+          fi
+          if [ "$state" = "INTERNAL_ERROR" ] || [ "$state" = "SKIPPED" ]; then echo "❌ $state"; exit 1; fi
+          sleep $interval; waited=$((waited + interval))
+        done
+        echo "⚠️ Timeout de monitoreo: revisa el run $RUN_ID en Databricks"
+
+    - name: Clean up
+      if: always()
+      run: rm -rf notebooks_to_deploy workflow_config.json
