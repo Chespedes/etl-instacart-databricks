@@ -220,6 +220,7 @@ El workflow queda con un horario diario (06:00 America/Guatemala) **pausado**, y
 | 4 | Error al crear el metastore (*Access Connector … could not be found*) | Permisos RBAC del administrador y error conocido de la UI con identidades system-assigned | El metastore se creó; se verificó la asignación y el Metastore Admin |
 | 5 | Workflow de prod: `AZURE_QUOTA_EXCEEDED_EXCEPTION` | La cuota de 4 vCPU es **compartida** por dev y prod | Un solo cluster encendido entre ambientes; el job **reintentó automáticamente** y terminó con éxito |
 | 6 | Carga web a GitHub rechazada | Límite de 25 MB por archivo | Datasets grandes comprimidos en `.zip` |
+| 7 | Error al crear la rama desde Databricks (*The link to your GitHub account does not have access*) | La app de Databricks no tenía permiso de escritura sobre el repositorio | Instalación de la *Databricks GitHub App* en el repositorio (acceso solo a este repo) |
 
 ## 13. Mejoras futuras
 
@@ -242,3 +243,6 @@ El workflow queda con un horario diario (06:00 America/Guatemala) **pausado**, y
 | `07_workflow_prod_exitoso.png` | Workflow `WF_INSTACART` ejecutado con éxito en producción |
 | `08_github_actions_exitoso.png` | Pipeline de GitHub Actions exitoso |
 | `09_dashboard.png` | Dashboard sobre la capa Golden |
+| `10_pull_request_construccion_a_main.png` | Pull Request #1 `construccion` → `main` (cambio probado en dev, revisado e integrado) |
+| `11_github_actions_despliegue_pr.png` | Despliegue automático a producción disparado por el merge del Pull Request |
+| `12_workflow_prod_despliegue_pr.png` | Workflow en producción con la nueva validación de Golden, sin reintentos (un solo cluster encendido) |
