@@ -233,16 +233,16 @@ El workflow queda con un horario diario (06:00 America/Guatemala) **pausado**, y
 
 | Archivo | Qué demuestra |
 |---|---|
-| `01_recursos_azure_resource_group.png` | Servicios aprovisionados en Azure |
-| `02_managed_identity_role_assignment.png` | Rol RBAC de la Managed Identity sobre el storage |
-| `03_metastore_unity_catalog.png` | Metastore propio asignado a dev y prod |
-| `03b_storage_credential_managed_identity.png` | Storage Credential de tipo Managed Identity |
-| `04_test_connection_external_location.png` | Conexión Unity Catalog → Data Lake verificada |
-| `05_cluster_configuracion.png` | Configuración del cluster |
-| `06_calidad_datos_silver.png` | Bitácora de calidad de datos |
-| `07_workflow_prod_exitoso.png` | Workflow `WF_INSTACART` ejecutado con éxito en producción |
-| `08_github_actions_exitoso.png` | Pipeline de GitHub Actions exitoso |
-| `09_dashboard.png` | Dashboard sobre la capa Golden |
-| `10_pull_request_construccion_a_main.png` | Pull Request #1 `construccion` → `main` (cambio probado en dev, revisado e integrado) |
-| `11_github_actions_despliegue_pr.png` | Despliegue automático a producción disparado por el merge del Pull Request |
-| `12_workflow_prod_despliegue_pr.png` | Workflow en producción con la nueva validación de Golden, sin reintentos (un solo cluster encendido) |
+| [01_recursos_azure_resource_group.png](evidencias/01_recursos_azure_resource_group.png) | Servicios aprovisionados en Azure |
+| [02_managed_identity_role_assignment.png](evidencias/02_managed_identity_role_assignment.png) | Rol RBAC de la Managed Identity sobre el storage |
+| [03_metastore_unity_catalog.png](evidencias/03_metastore_unity_catalog.png) | Metastore propio asignado a dev y prod |
+| [03b_storage_credential_managed_identity.png](evidencias/03b_storage_credential_managed_identity.png) | Storage Credential de tipo Managed Identity |
+| [04_test_connection_external_location.png](evidencias/04_test_connection_external_location.png) | Conexión Unity Catalog → Data Lake verificada |
+| [05_cluster_configuracion.png](evidencias/05_cluster_configuracion.png) | Configuración del cluster |
+| [06_calidad_datos_silver.png](evidencias/06_calidad_datos_silver.png) | Bitácora de calidad de datos |
+| [07_workflow_prod_exitoso.png](evidencias/07_workflow_prod_exitoso.png) | Workflow `WF_INSTACART` ejecutado con éxito en producción |
+| [08_github_actions_exitoso.png](evidencias/08_github_actions_exitoso.png) | Pipeline de GitHub Actions exitoso |
+| [09_dashboard.png](evidencias/09_dashboard.png) | Dashboard sobre la capa Golden |
+| [10_pull_request_construccion_a_main.png](evidencias/10_pull_request_construccion_a_main.png) | Pull Request #1 `construccion` → `main` (cambio probado en dev, revisado e integrado) |
+| [11_github_actions_despliegue_pr.png](evidencias/11_github_actions_despliegue_pr.png) | Despliegue automático a producción disparado por el merge del Pull Request |
+| [12_workflow_prod_despliegue_pr.png](evidencias/12_workflow_prod_despliegue_pr.png) | Workflow en producción con la nueva validación de Golden, sin reintentos (un solo cluster encendido) |
