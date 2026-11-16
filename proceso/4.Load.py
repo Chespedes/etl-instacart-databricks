@@ -96,6 +96,7 @@ escribir(top_productos, "top_productos_recompra")
 # MAGIC | **Frecuente** | 20+ pedidos y compra cada 10 días o menos (en promedio) |
 # MAGIC | **Ocasional** | 8+ pedidos |
 # MAGIC | **Esporádico** | el resto |
+# MAGIC > Los umbrales son reglas de negocio definidas para este análisis; se ajustan únicamente en esta celda.
 
 # COMMAND ----------
 
