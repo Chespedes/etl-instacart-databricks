@@ -73,6 +73,7 @@ Databricks → Unity Catalog → Storage Credential (cred-smartdata)
 | 2 | Cluster terminado: `CLOUD_PROVIDER_RESOURCE_STOCKOUT` | Sin capacidad de VMs `Standard_DS3_v2` en East US 2 | Se cambió el nodo a `Standard_D4ds_v5` (4 cores, 16 GB) |
 | 3 | No se podía entrar a la consola de cuenta (`accounts.azuredatabricks.net`) | La cuenta personal de Outlook es un usuario *externo* del tenant | Se creó un usuario nativo del tenant con rol **Global Administrator** para administrar la cuenta de Databricks |
 | 4 | Error al crear el metastore: *"Azure Managed Identity Credential with Access Connector Id ... could not be found"* | El usuario administrador (Entra ID) no tenía rol RBAC sobre los recursos de Azure | Se le asignó el rol **Reader** sobre `rg-smartdata-tf`. Se configuró como Metastore Admin la cuenta de trabajo |
+| 5 | Error al desplegar en Prod: *"Run failed with error message Cluster '1115-221855-gz0o5cxn' "* | El workflow de producción falló por AZURE_QUOTA_EXCEEDED (límite de 4 vCPU regionales compartido entre dev y prod)| asegurar que solo un cluster esté encendido; el job reintentó automáticamente (max_retries).|
 
 ## 10. Evidencias
 
